@@ -67,7 +67,7 @@ export default function AdminPage() {
     <div className="min-h-screen bg-cream">
       <nav className="bg-dark text-white px-6 py-4 flex items-center justify-between">
         <h1 className="text-lg tracking-[0.2em] font-bold">管理後台</h1>
-        <a href="/bnb/" className="text-xs text-accent hover:underline">返回首頁</a>
+        <a href="/" className="text-xs text-accent hover:underline">返回首頁</a>
       </nav>
 
       <div className="max-w-6xl mx-auto px-4 md:px-6 py-8">

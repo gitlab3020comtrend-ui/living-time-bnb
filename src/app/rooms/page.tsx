@@ -34,7 +34,7 @@ export default function RoomsPage() {
                   <p className="text-primary font-bold tracking-wider mb-4">
                     NT$ {room.price.toLocaleString()} {t.rooms.perNight} · {room.capacity}{t.rooms.person}
                   </p>
-                  <a href="/bnb/booking" className="btn-primary">{t.rooms.bookNow}</a>
+                  <a href="/booking" className="btn-primary">{t.rooms.bookNow}</a>
                 </div>
               </div>
             </FadeIn>
@@ -63,7 +63,7 @@ export default function RoomsPage() {
                   NT$ {wholeHouse.price.toLocaleString()} {t.rooms.perNight}
                 </p>
                 <p className="text-base opacity-50 tracking-wider mb-6">{t.rooms.wholeHouseDiscount}</p>
-                <a href="/bnb/booking" className="btn-primary">{t.rooms.wholeHouseBook}</a>
+                <a href="/booking" className="btn-primary">{t.rooms.wholeHouseBook}</a>
               </div>
             </div>
           </FadeIn>

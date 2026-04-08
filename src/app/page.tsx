@@ -26,7 +26,7 @@ export default function Home() {
           <h1 className="text-5xl md:text-7xl font-bold tracking-[0.4em] mb-6 opacity-0 animate-[fadeSlideUp_1s_0.6s_forwards]">{t.hero.title}</h1>
           <div className="w-16 h-[1px] bg-accent mx-auto mb-6 opacity-0 animate-[fadeIn_1s_1s_forwards]" />
           <p className="text-lg md:text-lg tracking-wider opacity-0 mb-10 animate-[fadeSlideUp_1s_1.2s_forwards]">{t.hero.description}</p>
-          <a href="/bnb/rooms" className="btn-primary opacity-0 animate-[fadeSlideUp_1s_1.5s_forwards]">{t.hero.cta}</a>
+          <a href="/rooms" className="btn-primary opacity-0 animate-[fadeSlideUp_1s_1.5s_forwards]">{t.hero.cta}</a>
         </div>
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10">
           <div className="w-[1px] h-12 bg-accent opacity-40 animate-pulse" />
@@ -46,7 +46,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {rooms.map((room, idx) => (
             <FadeIn key={room.id} delay={idx * 100} direction="up">
-              <a href={`/bnb/rooms#${room.id}`} className="group cursor-pointer block">
+              <a href={`/rooms#${room.id}`} className="group cursor-pointer block">
                 <div className="aspect-[4/3] overflow-hidden mb-4 rounded-sm shadow-sm group-hover:shadow-md transition-shadow duration-300">
                   <div className="w-full h-full group-hover:scale-105 transition-transform duration-700">
                     <RoomPlaceholder name={room.name[locale]} variant={idx} />
@@ -59,7 +59,7 @@ export default function Home() {
           ))}
         </div>
         <FadeIn delay={600} className="text-center mt-14">
-          <a href="/bnb/booking" className="btn-outline">{t.booking.title}</a>
+          <a href="/booking" className="btn-outline">{t.booking.title}</a>
         </FadeIn>
       </section>
       {/* Amenities */}

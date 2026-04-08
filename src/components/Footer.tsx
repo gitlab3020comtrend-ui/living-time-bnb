@@ -26,10 +26,10 @@ export default function Footer({ t }: Props) {
         <div>
           <p className="text-white text-lg tracking-[0.2em] font-bold mb-3 uppercase">Menu</p>
           <div className="space-y-3">
-            <a href="/bnb/rooms" className="block text-lg md:text-base tracking-wider hover:text-accent transition-colors">房型介紹</a>
-            <a href="/bnb/booking" className="block text-lg md:text-base tracking-wider hover:text-accent transition-colors">線上訂房</a>
-            <a href="/bnb/info" className="block text-lg md:text-base tracking-wider hover:text-accent transition-colors">住宿須知</a>
-            <a href="/bnb/contact" className="block text-lg md:text-base tracking-wider hover:text-accent transition-colors">聯絡我們</a>
+            <a href="/rooms" className="block text-lg md:text-base tracking-wider hover:text-accent transition-colors">房型介紹</a>
+            <a href="/booking" className="block text-lg md:text-base tracking-wider hover:text-accent transition-colors">線上訂房</a>
+            <a href="/info" className="block text-lg md:text-base tracking-wider hover:text-accent transition-colors">住宿須知</a>
+            <a href="/contact" className="block text-lg md:text-base tracking-wider hover:text-accent transition-colors">聯絡我們</a>
           </div>
         </div>
 

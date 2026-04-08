@@ -146,7 +146,7 @@ export default function BookingPage() {
 
             <p className="text-base text-primary/50 mb-6">{t.booking.emailSent}</p>
 
-            <a href="/bnb/" className="btn-primary">{t.booking.backHome}</a>
+            <a href="/" className="btn-primary">{t.booking.backHome}</a>
           </FadeIn>
         </div>
         <Footer t={t.footer} />

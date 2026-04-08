@@ -11,17 +11,17 @@ interface Props {
 export default function Navbar({ locale, onLocaleChange, t }: Props) {
   const [open, setOpen] = useState(false);
   const links = [
-    { href: '/bnb/', label: t.home },
-    { href: '/bnb/rooms', label: t.rooms },
-    { href: '/bnb/booking', label: t.booking },
-    { href: '/bnb/info', label: t.info || (locale === 'zh' ? '住宿須知' : 'Info') },
-    { href: '/bnb/contact', label: t.contact },
+    { href: '/', label: t.home },
+    { href: '/rooms', label: t.rooms },
+    { href: '/booking', label: t.booking },
+    { href: '/info', label: t.info || (locale === 'zh' ? '住宿須知' : 'Info') },
+    { href: '/contact', label: t.contact },
   ];
 
   return (
     <nav className="fixed top-0 w-full z-50 bg-cream/95 backdrop-blur-md shadow-sm text-dark">
       <div className="max-w-6xl mx-auto flex items-center justify-between px-5 h-16 md:h-16">
-        <a href="/bnb/" className="text-xl md:text-lg tracking-[0.4em] font-bold text-dark hover:text-accent transition-colors">
+        <a href="/" className="text-xl md:text-lg tracking-[0.4em] font-bold text-dark hover:text-accent transition-colors">
           {locale === 'zh' ? '生活時光' : 'Living Time'}
         </a>
         <div className="hidden md:flex items-center gap-8">
