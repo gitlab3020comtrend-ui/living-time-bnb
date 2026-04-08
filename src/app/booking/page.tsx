@@ -146,7 +146,12 @@ export default function BookingPage() {
 
             <p className="text-base text-primary/50 mb-6">{t.booking.emailSent}</p>
 
-            <a href="/" className="btn-primary">{t.booking.backHome}</a>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <a href="/" className="btn-primary">{t.booking.backHome}</a>
+              <a href="/order" className="btn-outline">
+                {locale === 'zh' ? '查詢訂單' : 'Check Order Status'}
+              </a>
+            </div>
           </FadeIn>
         </div>
         <Footer t={t.footer} />

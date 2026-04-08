@@ -5,7 +5,7 @@ import { Locale, localeNames } from '@/lib/i18n';
 interface Props {
   locale: Locale;
   onLocaleChange: (l: Locale) => void;
-  t: { home: string; rooms: string; booking: string; contact: string; admin: string; info?: string };
+  t: { home: string; rooms: string; booking: string; contact: string; admin: string; info?: string; order?: string };
 }
 
 export default function Navbar({ locale, onLocaleChange, t }: Props) {
@@ -14,6 +14,7 @@ export default function Navbar({ locale, onLocaleChange, t }: Props) {
     { href: '/', label: t.home },
     { href: '/rooms', label: t.rooms },
     { href: '/booking', label: t.booking },
+    { href: '/order', label: t.order || (locale === 'zh' ? '查詢訂單' : 'My Order') },
     { href: '/info', label: t.info || (locale === 'zh' ? '住宿須知' : 'Info') },
     { href: '/contact', label: t.contact },
   ];

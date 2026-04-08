@@ -1,6 +1,6 @@
 const translations = {
   zh: {
-    nav: { home: '首頁', rooms: '房型介紹', booking: '線上訂房', info: '住宿須知', contact: '聯絡我們', admin: '管理後台' },
+    nav: { home: '首頁', rooms: '房型介紹', booking: '線上訂房', order: '查詢訂單', info: '住宿須知', contact: '聯絡我們', admin: '管理後台' },
     hero: {
       title: '生活時光',
       subtitle: '宜蘭冬山 · 安農溪畔',
@@ -149,7 +149,7 @@ const translations = {
     },
   },
   en: {
-    nav: { home: 'Home', rooms: 'Rooms', booking: 'Booking', info: 'Info', contact: 'Contact', admin: 'Admin' },
+    nav: { home: 'Home', rooms: 'Rooms', booking: 'Booking', order: 'My Order', info: 'Info', contact: 'Contact', admin: 'Admin' },
     hero: {
       title: 'Living Time',
       subtitle: 'Dongshan, Yilan · By Annong River',

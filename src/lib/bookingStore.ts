@@ -93,6 +93,36 @@ export function getBookingById(id: string): Booking | undefined {
   return bookings.find(b => b.id === id);
 }
 
+export function getBookingByIdAndEmail(id: string, email: string): Booking | undefined {
+  const bookings = readJson(BOOKINGS_FILE) as Booking[];
+  return bookings.find(b => b.id === id && b.email.toLowerCase() === email.toLowerCase());
+}
+
+export function updateBooking(id: string, email: string, updates: Partial<Pick<Booking, 'name' | 'phone' | 'guests' | 'note'>>): Booking | null {
+  const bookings = readJson(BOOKINGS_FILE) as Booking[];
+  const idx = bookings.findIndex(b => b.id === id && b.email.toLowerCase() === email.toLowerCase());
+  if (idx === -1) return null;
+  if (bookings[idx].status === 'cancelled') return null;
+  const allowed: (keyof typeof updates)[] = ['name', 'phone', 'guests', 'note'];
+  for (const key of allowed) {
+    if (updates[key] !== undefined) {
+      (bookings[idx] as any)[key] = updates[key];
+    }
+  }
+  writeJson(BOOKINGS_FILE, bookings);
+  return bookings[idx];
+}
+
+export function cancelBookingByGuest(id: string, email: string): boolean {
+  const bookings = readJson(BOOKINGS_FILE) as Booking[];
+  const idx = bookings.findIndex(b => b.id === id && b.email.toLowerCase() === email.toLowerCase());
+  if (idx === -1) return false;
+  if (bookings[idx].status === 'cancelled') return false;
+  bookings[idx].status = 'cancelled';
+  writeJson(BOOKINGS_FILE, bookings);
+  return true;
+}
+
 export function getContacts(): Contact[] { return readJson(CONTACTS_FILE); }
 
 export function markContactRead(id: string): boolean {
