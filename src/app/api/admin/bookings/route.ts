@@ -8,12 +8,18 @@ function checkAuth(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   if (!checkAuth(req)) return NextResponse.json({ error: '未授權' }, { status: 401 });
-  return NextResponse.json(getBookings());
+  return NextResponse.json(await getBookings());
 }
 
 export async function PATCH(req: NextRequest) {
   if (!checkAuth(req)) return NextResponse.json({ error: '未授權' }, { status: 401 });
-  const { id, status } = await req.json();
-  const ok = updateBookingStatus(id, status);
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+  }
+  const { id, status } = body as any;
+  const ok = await updateBookingStatus(id, status);
   return NextResponse.json({ success: ok });
 }

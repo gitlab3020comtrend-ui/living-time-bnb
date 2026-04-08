@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminLogin, verifyAdminToken, changeAdminPassword, adminLogout } from '@/lib/bookingStore';
+import { adminLogin, verifyAdminToken, changeAdminPassword } from '@/lib/bookingStore';
 
-// POST: login or change password
 export async function POST(req: NextRequest) {
-  const body = await req.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
   const { action } = body;
 
   if (action === 'login') {
-    const token = adminLogin(body.password || '');
+    const token = await adminLogin((body.password as string) || '');
     if (!token) return NextResponse.json({ error: '密碼錯誤' }, { status: 401 });
     return NextResponse.json({ success: true, token });
   }
@@ -15,14 +19,12 @@ export async function POST(req: NextRequest) {
   if (action === 'change-password') {
     const token = req.headers.get('authorization')?.replace('Bearer ', '') || '';
     if (!verifyAdminToken(token)) return NextResponse.json({ error: '未授權' }, { status: 401 });
-    const ok = changeAdminPassword(body.oldPassword, body.newPassword);
+    const ok = await changeAdminPassword(body.oldPassword as string, body.newPassword as string);
     if (!ok) return NextResponse.json({ error: '舊密碼錯誤' }, { status: 400 });
     return NextResponse.json({ success: true });
   }
 
   if (action === 'logout') {
-    const token = req.headers.get('authorization')?.replace('Bearer ', '') || '';
-    adminLogout(token);
     return NextResponse.json({ success: true });
   }
 

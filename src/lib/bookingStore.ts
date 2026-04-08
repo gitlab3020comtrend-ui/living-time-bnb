@@ -1,24 +1,40 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { join } from 'path';
+import { createHmac } from 'crypto';
 
-const DATA_DIR = join(process.cwd(), 'data');
-const BOOKINGS_FILE = join(DATA_DIR, 'bookings.json');
-const CONTACTS_FILE = join(DATA_DIR, 'contacts.json');
+// ── Storage Abstraction ──
+// Uses Vercel KV when KV_REST_API_URL is set, otherwise falls back to filesystem
 
-function ensureDir() {
-  if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
+const useKV = !!process.env.KV_REST_API_URL;
+
+async function kvGet<T>(key: string, fallback: T): Promise<T> {
+  if (useKV) {
+    const { kv } = await import('@vercel/kv');
+    const val = await kv.get<T>(key);
+    return val ?? fallback;
+  }
+  // fs fallback for Docker/local
+  const { readFileSync, existsSync, mkdirSync } = await import('fs');
+  const { join } = await import('path');
+  const dir = join(process.cwd(), 'data');
+  const file = join(dir, `${key}.json`);
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  if (!existsSync(file)) return fallback;
+  try { return JSON.parse(readFileSync(file, 'utf-8')); } catch { return fallback; }
 }
 
-function readJson(file: string): any[] {
-  ensureDir();
-  if (!existsSync(file)) return [];
-  try { return JSON.parse(readFileSync(file, 'utf-8')); } catch { return []; }
+async function kvSet<T>(key: string, value: T): Promise<void> {
+  if (useKV) {
+    const { kv } = await import('@vercel/kv');
+    await kv.set(key, value);
+    return;
+  }
+  const { writeFileSync, existsSync, mkdirSync } = await import('fs');
+  const { join } = await import('path');
+  const dir = join(process.cwd(), 'data');
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, `${key}.json`), JSON.stringify(value, null, 2));
 }
 
-function writeJson(file: string, data: any[]) {
-  ensureDir();
-  writeFileSync(file, JSON.stringify(data, null, 2));
-}
+// ── Types ──
 
 export interface Booking {
   id: string; roomId: string; checkIn: string; checkOut: string;
@@ -31,39 +47,42 @@ export interface Contact {
   id: string; name: string; email: string; message: string; createdAt: string; read: boolean;
 }
 
-export function addBooking(b: Omit<Booking, 'id' | 'createdAt' | 'status'>): Booking {
-  const bookings = readJson(BOOKINGS_FILE);
+// ── Bookings ──
+
+export async function addBooking(b: Omit<Booking, 'id' | 'createdAt' | 'status'>): Promise<Booking> {
+  const bookings = await kvGet<Booking[]>('bookings', []);
   const entry: Booking = { ...b, id: `B${Date.now()}`, createdAt: new Date().toISOString(), status: 'pending' };
   bookings.unshift(entry);
-  writeJson(BOOKINGS_FILE, bookings);
+  await kvSet('bookings', bookings);
   return entry;
 }
 
-export function getBookings(): Booking[] { return readJson(BOOKINGS_FILE); }
+export async function getBookings(): Promise<Booking[]> {
+  return kvGet<Booking[]>('bookings', []);
+}
 
-export function updateBookingStatus(id: string, status: Booking['status']): boolean {
-  const bookings = readJson(BOOKINGS_FILE);
+export async function updateBookingStatus(id: string, status: Booking['status']): Promise<boolean> {
+  const bookings = await kvGet<Booking[]>('bookings', []);
   const idx = bookings.findIndex((b: Booking) => b.id === id);
   if (idx === -1) return false;
   bookings[idx].status = status;
-  writeJson(BOOKINGS_FILE, bookings);
+  await kvSet('bookings', bookings);
   return true;
 }
 
-export function addContact(c: Omit<Contact, 'id' | 'createdAt' | 'read'>): Contact {
-  const contacts = readJson(CONTACTS_FILE);
+export async function addContact(c: Omit<Contact, 'id' | 'createdAt' | 'read'>): Promise<Contact> {
+  const contacts = await kvGet<Contact[]>('contacts', []);
   const entry: Contact = { ...c, id: `C${Date.now()}`, createdAt: new Date().toISOString(), read: false };
   contacts.unshift(entry);
-  writeJson(CONTACTS_FILE, contacts);
+  await kvSet('contacts', contacts);
   return entry;
 }
 
-export function getBookedDates(roomId: string, month: string): string[] {
-  const bookings = readJson(BOOKINGS_FILE) as Booking[];
+export async function getBookedDates(roomId: string, month: string): Promise<string[]> {
+  const bookings = await kvGet<Booking[]>('bookings', []);
   const dates: string[] = [];
   for (const b of bookings) {
     if (b.status === 'cancelled') continue;
-    // Match specific room or whole-house blocks all rooms
     if (b.roomId !== roomId && b.roomId !== 'whole-house' && roomId !== 'whole-house') continue;
     const start = new Date(b.checkIn + 'T00:00:00');
     const end = new Date(b.checkOut + 'T00:00:00');
@@ -77,29 +96,28 @@ export function getBookedDates(roomId: string, month: string): string[] {
   return Array.from(new Set(dates));
 }
 
-export function hasConflict(roomId: string, checkIn: string, checkOut: string): boolean {
-  const bookings = readJson(BOOKINGS_FILE) as Booking[];
+export async function hasConflict(roomId: string, checkIn: string, checkOut: string): Promise<boolean> {
+  const bookings = await kvGet<Booking[]>('bookings', []);
   for (const b of bookings) {
     if (b.status === 'cancelled') continue;
     if (b.roomId !== roomId && b.roomId !== 'whole-house' && roomId !== 'whole-house') continue;
-    // Overlap check: existing [b.checkIn, b.checkOut) overlaps [checkIn, checkOut)
     if (b.checkIn < checkOut && b.checkOut > checkIn) return true;
   }
   return false;
 }
 
-export function getBookingById(id: string): Booking | undefined {
-  const bookings = readJson(BOOKINGS_FILE) as Booking[];
+export async function getBookingById(id: string): Promise<Booking | undefined> {
+  const bookings = await kvGet<Booking[]>('bookings', []);
   return bookings.find(b => b.id === id);
 }
 
-export function getBookingByIdAndEmail(id: string, email: string): Booking | undefined {
-  const bookings = readJson(BOOKINGS_FILE) as Booking[];
+export async function getBookingByIdAndEmail(id: string, email: string): Promise<Booking | undefined> {
+  const bookings = await kvGet<Booking[]>('bookings', []);
   return bookings.find(b => b.id === id && b.email.toLowerCase() === email.toLowerCase());
 }
 
-export function updateBooking(id: string, email: string, updates: Partial<Pick<Booking, 'name' | 'phone' | 'guests' | 'note'>>): Booking | null {
-  const bookings = readJson(BOOKINGS_FILE) as Booking[];
+export async function updateBooking(id: string, email: string, updates: Partial<Pick<Booking, 'name' | 'phone' | 'guests' | 'note'>>): Promise<Booking | null> {
+  const bookings = await kvGet<Booking[]>('bookings', []);
   const idx = bookings.findIndex(b => b.id === id && b.email.toLowerCase() === email.toLowerCase());
   if (idx === -1) return null;
   if (bookings[idx].status === 'cancelled') return null;
@@ -109,89 +127,75 @@ export function updateBooking(id: string, email: string, updates: Partial<Pick<B
       (bookings[idx] as any)[key] = updates[key];
     }
   }
-  writeJson(BOOKINGS_FILE, bookings);
+  await kvSet('bookings', bookings);
   return bookings[idx];
 }
 
-export function cancelBookingByGuest(id: string, email: string): boolean {
-  const bookings = readJson(BOOKINGS_FILE) as Booking[];
+export async function cancelBookingByGuest(id: string, email: string): Promise<boolean> {
+  const bookings = await kvGet<Booking[]>('bookings', []);
   const idx = bookings.findIndex(b => b.id === id && b.email.toLowerCase() === email.toLowerCase());
   if (idx === -1) return false;
   if (bookings[idx].status === 'cancelled') return false;
   bookings[idx].status = 'cancelled';
-  writeJson(BOOKINGS_FILE, bookings);
+  await kvSet('bookings', bookings);
   return true;
 }
 
-// ── Admin Auth ──
-const ADMIN_FILE = join(DATA_DIR, 'admin.json');
-const DEFAULT_PASSWORD = '0916706660';
-
-interface AdminConfig {
-  password: string;
-  tokens: { token: string; createdAt: string }[];
+export async function getContacts(): Promise<Contact[]> {
+  return kvGet<Contact[]>('contacts', []);
 }
 
-function getAdminConfig(): AdminConfig {
-  ensureDir();
-  if (!existsSync(ADMIN_FILE)) {
-    const cfg: AdminConfig = { password: DEFAULT_PASSWORD, tokens: [] };
-    writeFileSync(ADMIN_FILE, JSON.stringify(cfg, null, 2));
-    return cfg;
-  }
-  try { return JSON.parse(readFileSync(ADMIN_FILE, 'utf-8')); } catch { return { password: DEFAULT_PASSWORD, tokens: [] }; }
+export async function markContactRead(id: string): Promise<boolean> {
+  const contacts = await kvGet<Contact[]>('contacts', []);
+  const idx = contacts.findIndex((c: Contact) => c.id === id);
+  if (idx === -1) return false;
+  contacts[idx].read = true;
+  await kvSet('contacts', contacts);
+  return true;
 }
 
-function saveAdminConfig(cfg: AdminConfig) {
-  ensureDir();
-  writeFileSync(ADMIN_FILE, JSON.stringify(cfg, null, 2));
+// ── Admin Auth (stateless, no storage needed) ──
+
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '0916706660';
+const ADMIN_SECRET = process.env.ADMIN_SECRET || 'bnb-admin-secret-' + ADMIN_PASSWORD;
+const TOKEN_MAX_AGE = 24 * 60 * 60 * 1000; // 24h
+
+function hmacSign(data: string): string {
+  return createHmac('sha256', ADMIN_SECRET).update(data).digest('hex');
 }
 
-export function adminLogin(password: string): string | null {
-  const cfg = getAdminConfig();
-  if (password !== cfg.password) return null;
-  const token = `admin_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-  cfg.tokens = cfg.tokens.filter(t => {
-    const age = Date.now() - new Date(t.createdAt).getTime();
-    return age < 24 * 60 * 60 * 1000; // keep tokens < 24h
-  });
-  cfg.tokens.push({ token, createdAt: new Date().toISOString() });
-  saveAdminConfig(cfg);
-  return token;
+export async function adminLogin(password: string): Promise<string | null> {
+  const currentPw = await getEffectivePassword();
+  if (password !== currentPw) return null;
+  const ts = Date.now().toString();
+  const sig = hmacSign(ts);
+  return `${ts}.${sig}`;
 }
 
 export function verifyAdminToken(token: string): boolean {
   if (!token) return false;
-  const cfg = getAdminConfig();
-  return cfg.tokens.some(t => {
-    if (t.token !== token) return false;
-    const age = Date.now() - new Date(t.createdAt).getTime();
-    return age < 24 * 60 * 60 * 1000;
-  });
+  const parts = token.split('.');
+  if (parts.length !== 2) return false;
+  const [ts, sig] = parts;
+  const age = Date.now() - Number(ts);
+  if (isNaN(age) || age < 0 || age > TOKEN_MAX_AGE) return false;
+  return hmacSign(ts) === sig;
 }
 
-export function changeAdminPassword(oldPassword: string, newPassword: string): boolean {
-  const cfg = getAdminConfig();
-  if (oldPassword !== cfg.password) return false;
-  cfg.password = newPassword;
-  cfg.tokens = []; // invalidate all sessions
-  saveAdminConfig(cfg);
+export async function changeAdminPassword(oldPassword: string, newPassword: string): Promise<boolean> {
+  const currentPw = await getEffectivePassword();
+  if (oldPassword !== currentPw) return false;
+  // Store password override (works in both KV and fs)
+  await kvSet('admin', { password: newPassword });
   return true;
 }
 
-export function adminLogout(token: string) {
-  const cfg = getAdminConfig();
-  cfg.tokens = cfg.tokens.filter(t => t.token !== token);
-  saveAdminConfig(cfg);
+async function getEffectivePassword(): Promise<string> {
+  const cfg = await kvGet<{ password: string } | null>('admin', null);
+  return cfg?.password || ADMIN_PASSWORD;
 }
 
-export function getContacts(): Contact[] { return readJson(CONTACTS_FILE); }
-
-export function markContactRead(id: string): boolean {
-  const contacts = readJson(CONTACTS_FILE);
-  const idx = contacts.findIndex((c: Contact) => c.id === id);
-  if (idx === -1) return false;
-  contacts[idx].read = true;
-  writeJson(CONTACTS_FILE, contacts);
-  return true;
+export function adminLogout(_token: string): void {
+  // Stateless tokens - nothing to invalidate server-side
+  // Client just removes from localStorage
 }

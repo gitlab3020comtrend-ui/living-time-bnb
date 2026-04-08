@@ -10,6 +10,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Missing roomId or month' }, { status: 400 });
   }
 
-  const bookedDates = getBookedDates(roomId, month);
+  const bookedDates = await getBookedDates(roomId, month);
   return NextResponse.json({ bookedDates });
 }

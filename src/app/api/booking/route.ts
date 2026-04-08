@@ -3,28 +3,30 @@ import { addBooking, hasConflict } from '@/lib/bookingStore';
 import { calculatePrice } from '@/lib/pricing';
 
 export async function POST(req: NextRequest) {
+  let body: Record<string, unknown>;
   try {
-    const body = await req.json();
-    const { roomId, checkIn, checkOut, guests, name, email, phone, note } = body;
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+  }
+  try {
+    const { roomId, checkIn, checkOut, guests, name, email, phone, note } = body as any;
     if (!roomId || !checkIn || !checkOut || !name || !email || !phone) {
       return NextResponse.json({ error: '缺少必填欄位' }, { status: 400 });
     }
 
-    // Validate dates
     if (checkIn >= checkOut) {
       return NextResponse.json({ error: '退房日期必須晚於入住日期' }, { status: 400 });
     }
 
-    // Check availability
-    if (hasConflict(roomId, checkIn, checkOut)) {
+    if (await hasConflict(roomId, checkIn, checkOut)) {
       return NextResponse.json({ error: '所選日期已被預訂，請選擇其他日期' }, { status: 409 });
     }
 
-    // Calculate price
     const breakdown = calculatePrice(roomId, checkIn, checkOut);
 
     const guestDefault = roomId === 'whole-house' ? 10 : 2;
-    const booking = addBooking({
+    const booking = await addBooking({
       roomId,
       checkIn,
       checkOut,

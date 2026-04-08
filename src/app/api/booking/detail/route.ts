@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Missing id' }, { status: 400 });
   }
 
-  const booking = getBookingById(id);
+  const booking = await getBookingById(id);
   if (!booking) {
     return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
   }
