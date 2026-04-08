@@ -123,6 +123,68 @@ export function cancelBookingByGuest(id: string, email: string): boolean {
   return true;
 }
 
+// ── Admin Auth ──
+const ADMIN_FILE = join(DATA_DIR, 'admin.json');
+const DEFAULT_PASSWORD = '0916706660';
+
+interface AdminConfig {
+  password: string;
+  tokens: { token: string; createdAt: string }[];
+}
+
+function getAdminConfig(): AdminConfig {
+  ensureDir();
+  if (!existsSync(ADMIN_FILE)) {
+    const cfg: AdminConfig = { password: DEFAULT_PASSWORD, tokens: [] };
+    writeFileSync(ADMIN_FILE, JSON.stringify(cfg, null, 2));
+    return cfg;
+  }
+  try { return JSON.parse(readFileSync(ADMIN_FILE, 'utf-8')); } catch { return { password: DEFAULT_PASSWORD, tokens: [] }; }
+}
+
+function saveAdminConfig(cfg: AdminConfig) {
+  ensureDir();
+  writeFileSync(ADMIN_FILE, JSON.stringify(cfg, null, 2));
+}
+
+export function adminLogin(password: string): string | null {
+  const cfg = getAdminConfig();
+  if (password !== cfg.password) return null;
+  const token = `admin_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  cfg.tokens = cfg.tokens.filter(t => {
+    const age = Date.now() - new Date(t.createdAt).getTime();
+    return age < 24 * 60 * 60 * 1000; // keep tokens < 24h
+  });
+  cfg.tokens.push({ token, createdAt: new Date().toISOString() });
+  saveAdminConfig(cfg);
+  return token;
+}
+
+export function verifyAdminToken(token: string): boolean {
+  if (!token) return false;
+  const cfg = getAdminConfig();
+  return cfg.tokens.some(t => {
+    if (t.token !== token) return false;
+    const age = Date.now() - new Date(t.createdAt).getTime();
+    return age < 24 * 60 * 60 * 1000;
+  });
+}
+
+export function changeAdminPassword(oldPassword: string, newPassword: string): boolean {
+  const cfg = getAdminConfig();
+  if (oldPassword !== cfg.password) return false;
+  cfg.password = newPassword;
+  cfg.tokens = []; // invalidate all sessions
+  saveAdminConfig(cfg);
+  return true;
+}
+
+export function adminLogout(token: string) {
+  const cfg = getAdminConfig();
+  cfg.tokens = cfg.tokens.filter(t => t.token !== token);
+  saveAdminConfig(cfg);
+}
+
 export function getContacts(): Contact[] { return readJson(CONTACTS_FILE); }
 
 export function markContactRead(id: string): boolean {

@@ -1,5 +1,6 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+
 interface Booking {
   id: string; roomId: string; checkIn: string; checkOut: string;
   guests: number; name: string; email: string; phone: string; note: string;
@@ -17,21 +18,119 @@ interface Contact {
 
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'cancelled';
 
+const TOKEN_KEY = 'bnb_admin_token';
+
+function getToken() { return typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) || '' : ''; }
+function saveToken(t: string) { localStorage.setItem(TOKEN_KEY, t); }
+function clearToken() { localStorage.removeItem(TOKEN_KEY); }
+
+async function authFetch(url: string, opts: RequestInit = {}) {
+  const token = getToken();
+  return fetch(url, {
+    ...opts,
+    headers: { ...opts.headers as Record<string, string>, 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+  });
+}
+
 export default function AdminPage() {
+  const [authed, setAuthed] = useState<boolean | null>(null); // null = checking
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  // Change password
+  const [showChangePw, setShowChangePw] = useState(false);
+  const [oldPw, setOldPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [pwMsg, setPwMsg] = useState('');
+  const [pwError, setPwError] = useState('');
+
   const [tab, setTab] = useState<'bookings' | 'contacts'>('bookings');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Verify existing token on mount
   useEffect(() => {
-    fetch('/api/admin/bookings').then(r => r.json()).then(setBookings).catch(() => {});
-    fetch('/api/admin/contacts').then(r => r.json()).then(setContacts).catch(() => {});
+    const token = getToken();
+    if (!token) { setAuthed(false); return; }
+    fetch('/api/admin/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ action: 'verify' }),
+    })
+      .then(r => r.json())
+      .then(d => { setAuthed(d.valid === true); if (!d.valid) clearToken(); })
+      .catch(() => { setAuthed(false); clearToken(); });
   }, []);
 
+  const loadData = useCallback(() => {
+    authFetch('/api/admin/bookings').then(r => { if (r.ok) return r.json(); throw new Error(); }).then(setBookings).catch(() => {});
+    authFetch('/api/admin/contacts').then(r => { if (r.ok) return r.json(); throw new Error(); }).then(setContacts).catch(() => {});
+  }, []);
+
+  useEffect(() => { if (authed) loadData(); }, [authed, loadData]);
+
+  async function handleLogin() {
+    setLoginLoading(true);
+    setLoginError('');
+    try {
+      const res = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'login', password }),
+      });
+      const data = await res.json();
+      if (res.ok && data.token) {
+        saveToken(data.token);
+        setAuthed(true);
+        setPassword('');
+      } else {
+        setLoginError(data.error || '登入失敗');
+      }
+    } catch {
+      setLoginError('網路錯誤');
+    } finally {
+      setLoginLoading(false);
+    }
+  }
+
+  async function handleLogout() {
+    await authFetch('/api/admin/auth', { method: 'POST', body: JSON.stringify({ action: 'logout' }) }).catch(() => {});
+    clearToken();
+    setAuthed(false);
+    setBookings([]);
+    setContacts([]);
+  }
+
+  async function handleChangePw() {
+    setPwError('');
+    setPwMsg('');
+    if (newPw.length < 4) { setPwError('新密碼至少 4 個字元'); return; }
+    if (newPw !== confirmPw) { setPwError('兩次輸入的新密碼不一致'); return; }
+    try {
+      const res = await authFetch('/api/admin/auth', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'change-password', oldPassword: oldPw, newPassword: newPw }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPwMsg('密碼已更新，請重新登入');
+        setOldPw(''); setNewPw(''); setConfirmPw('');
+        setTimeout(() => { clearToken(); setAuthed(false); setShowChangePw(false); setPwMsg(''); }, 1500);
+      } else {
+        setPwError(data.error || '修改失敗');
+      }
+    } catch {
+      setPwError('網路錯誤');
+    }
+  }
+
   async function updateStatus(id: string, status: string) {
-    await fetch('/api/admin/bookings', {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    await authFetch('/api/admin/bookings', {
+      method: 'PATCH',
       body: JSON.stringify({ id, status }),
     });
     setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b));
@@ -63,14 +162,106 @@ export default function AdminPage() {
 
   const fmt = (n: number) => n.toLocaleString();
 
+  // ── Loading ──
+  if (authed === null) {
+    return (
+      <div className="min-h-screen bg-cream flex items-center justify-center">
+        <p className="text-lg tracking-wider text-primary/50">載入中...</p>
+      </div>
+    );
+  }
+
+  // ── Login Screen ──
+  if (!authed) {
+    return (
+      <div className="min-h-screen bg-cream flex items-center justify-center px-6">
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold tracking-[0.2em] text-dark mb-2">管理後台</h1>
+            <p className="text-base text-primary/50 tracking-wider">請輸入密碼登入</p>
+          </div>
+          <div className="bg-white border border-sand rounded-sm p-6 space-y-4">
+            <div>
+              <label className="text-base tracking-wider block mb-2">密碼</label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                className="input-field"
+                autoFocus
+              />
+            </div>
+            {loginError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-sm text-base text-red-700">{loginError}</div>
+            )}
+            <button
+              onClick={handleLogin}
+              disabled={loginLoading || !password}
+              className="w-full py-3 text-base tracking-[0.2em] border border-accent bg-accent text-white hover:bg-primary hover:border-primary transition-all disabled:opacity-50"
+            >
+              {loginLoading ? '...' : '登入'}
+            </button>
+          </div>
+          <div className="text-center mt-4">
+            <a href="/" className="text-sm text-primary/40 hover:text-accent tracking-wider">返回首頁</a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Admin Dashboard ──
   return (
     <div className="min-h-screen bg-cream">
       <nav className="bg-dark text-white px-6 py-4 flex items-center justify-between">
         <h1 className="text-lg tracking-[0.2em] font-bold">管理後台</h1>
-        <a href="/" className="text-xs text-accent hover:underline">返回首頁</a>
+        <div className="flex items-center gap-4">
+          <button onClick={() => { setShowChangePw(!showChangePw); setPwError(''); setPwMsg(''); }}
+            className="text-xs text-white/60 hover:text-accent tracking-wider">
+            修改密碼
+          </button>
+          <button onClick={handleLogout} className="text-xs text-white/60 hover:text-red-400 tracking-wider">
+            登出
+          </button>
+          <a href="/" className="text-xs text-accent hover:underline">返回首頁</a>
+        </div>
       </nav>
 
       <div className="max-w-6xl mx-auto px-4 md:px-6 py-8">
+        {/* Change Password Panel */}
+        {showChangePw && (
+          <div className="bg-white border border-sand rounded-sm p-6 mb-6 max-w-md">
+            <h3 className="text-base font-bold tracking-wider mb-4">修改密碼</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm tracking-wider block mb-1">目前密碼</label>
+                <input type="password" value={oldPw} onChange={e => setOldPw(e.target.value)} className="input-field" />
+              </div>
+              <div>
+                <label className="text-sm tracking-wider block mb-1">新密碼</label>
+                <input type="password" value={newPw} onChange={e => setNewPw(e.target.value)} className="input-field" />
+              </div>
+              <div>
+                <label className="text-sm tracking-wider block mb-1">確認新密碼</label>
+                <input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} className="input-field" />
+              </div>
+              {pwError && <p className="text-sm text-red-600">{pwError}</p>}
+              {pwMsg && <p className="text-sm text-green-600">{pwMsg}</p>}
+              <div className="flex gap-3">
+                <button onClick={handleChangePw}
+                  className="px-4 py-2 text-sm bg-accent text-white rounded-sm hover:bg-primary transition">
+                  確認修改
+                </button>
+                <button onClick={() => { setShowChangePw(false); setPwError(''); setPwMsg(''); }}
+                  className="px-4 py-2 text-sm border border-primary/30 text-primary rounded-sm hover:border-primary transition">
+                  取消
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-4 mb-6">
           <button onClick={() => setTab('bookings')}
             className={`px-6 py-2 text-sm tracking-wider rounded-sm transition ${tab === 'bookings' ? 'bg-primary text-white' : 'bg-white text-dark hover:bg-sand'}`}>
