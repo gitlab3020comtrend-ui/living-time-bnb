@@ -1,0 +1,17 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/admin/page": "app/admin/page.js",
+  "/api/admin/bookings/route": "app/api/admin/bookings/route.js",
+  "/api/booking/availability/route": "app/api/booking/availability/route.js",
+  "/api/booking/detail/route": "app/api/booking/detail/route.js",
+  "/api/booking/route": "app/api/booking/route.js",
+  "/api/contact/route": "app/api/contact/route.js",
+  "/booking/page": "app/booking/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/contact/page": "app/contact/page.js",
+  "/info/page": "app/info/page.js",
+  "/page": "app/page.js",
+  "/rooms/page": "app/rooms/page.js",
+  "/sitemap.xml/route": "app/sitemap.xml/route.js",
+  "/api/admin/contacts/route": "app/api/admin/contacts/route.js"
+}

@@ -1,0 +1,24 @@
+version: "3.8"
+
+services:
+  living-time-bnb:
+    build: .
+    container_name: living-time-bnb
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    volumes:
+      - bnb-data:/app/data
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/bnb"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  bnb-data:
+    driver: local

@@ -1,0 +1,232 @@
+'use client';
+import { useState, useEffect, useMemo } from 'react';
+interface Booking {
+  id: string; roomId: string; checkIn: string; checkOut: string;
+  guests: number; name: string; email: string; phone: string; note: string;
+  totalPrice?: number; priceBreakdown?: {
+    roomName?: string; nightCount?: number; basePrice?: number; baseCost?: number;
+    weekendNights?: number; weekendSurcharge?: number; weekendTotal?: number;
+    cleaningFee?: number; total?: number;
+  };
+  createdAt: string; status: string;
+}
+
+interface Contact {
+  id: string; name: string; email: string; message: string; createdAt: string; read: boolean;
+}
+
+type StatusFilter = 'all' | 'pending' | 'confirmed' | 'cancelled';
+
+export default function AdminPage() {
+  const [tab, setTab] = useState<'bookings' | 'contacts'>('bookings');
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [filter, setFilter] = useState<StatusFilter>('all');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/admin/bookings').then(r => r.json()).then(setBookings).catch(() => {});
+    fetch('/api/admin/contacts').then(r => r.json()).then(setContacts).catch(() => {});
+  }, []);
+
+  async function updateStatus(id: string, status: string) {
+    await fetch('/api/admin/bookings', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status }),
+    });
+    setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b));
+  }
+
+  const filteredBookings = useMemo(() => {
+    if (filter === 'all') return bookings;
+    return bookings.filter(b => b.status === filter);
+  }, [bookings, filter]);
+
+  const statusColors: Record<string, string> = {
+    pending: 'bg-yellow-100 text-yellow-800',
+    confirmed: 'bg-green-100 text-green-800',
+    cancelled: 'bg-red-100 text-red-800',
+  };
+
+  const statusLabels: Record<string, string> = {
+    pending: '待確認',
+    confirmed: '已確認',
+    cancelled: '已取消',
+  };
+
+  const filterCounts = useMemo(() => ({
+    all: bookings.length,
+    pending: bookings.filter(b => b.status === 'pending').length,
+    confirmed: bookings.filter(b => b.status === 'confirmed').length,
+    cancelled: bookings.filter(b => b.status === 'cancelled').length,
+  }), [bookings]);
+
+  const fmt = (n: number) => n.toLocaleString();
+
+  return (
+    <div className="min-h-screen bg-cream">
+      <nav className="bg-dark text-white px-6 py-4 flex items-center justify-between">
+        <h1 className="text-lg tracking-[0.2em] font-bold">管理後台</h1>
+        <a href="/bnb/" className="text-xs text-accent hover:underline">返回首頁</a>
+      </nav>
+
+      <div className="max-w-6xl mx-auto px-4 md:px-6 py-8">
+        <div className="flex gap-4 mb-6">
+          <button onClick={() => setTab('bookings')}
+            className={`px-6 py-2 text-sm tracking-wider rounded-sm transition ${tab === 'bookings' ? 'bg-primary text-white' : 'bg-white text-dark hover:bg-sand'}`}>
+            訂房管理 ({bookings.length})
+          </button>
+          <button onClick={() => setTab('contacts')}
+            className={`px-6 py-2 text-sm tracking-wider rounded-sm transition ${tab === 'contacts' ? 'bg-primary text-white' : 'bg-white text-dark hover:bg-sand'}`}>
+            聯繫訊息 ({contacts.length})
+          </button>
+        </div>
+
+        {tab === 'bookings' && (
+          <>
+            {/* Status Filter */}
+            <div className="flex flex-wrap gap-2 mb-6">
+              {(['all', 'pending', 'confirmed', 'cancelled'] as StatusFilter[]).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`px-4 py-1.5 text-xs tracking-wider rounded-full border transition ${
+                    filter === f
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-white text-primary/60 border-sand hover:border-primary/40'
+                  }`}
+                >
+                  {f === 'all' ? '全部' : statusLabels[f]} ({filterCounts[f]})
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-4">
+              {filteredBookings.length === 0 && <p className="text-sm text-primary opacity-60">尚無訂房紀錄</p>}
+              {filteredBookings.map(b => {
+                const expanded = expandedId === b.id;
+                const pb = b.priceBreakdown;
+                return (
+                  <div key={b.id} className="bg-white rounded-sm shadow-sm overflow-hidden">
+                    {/* Main Row */}
+                    <div
+                      className="p-4 md:p-6 cursor-pointer hover:bg-sand/20 transition"
+                      onClick={() => setExpandedId(expanded ? null : b.id)}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-bold tracking-wider">{b.name}</p>
+                            <span className={`text-xs px-3 py-0.5 rounded-full ${statusColors[b.status] || 'bg-gray-100'}`}>
+                              {statusLabels[b.status] || b.status}
+                            </span>
+                          </div>
+                          <p className="text-xs text-primary/60 mt-1">
+                            {pb?.roomName || b.roomId} · {b.checkIn} ~ {b.checkOut}
+                            {pb?.nightCount ? ` (${pb.nightCount}晚)` : ''} · {b.guests}人
+                          </p>
+                          <p className="text-xs mt-1 text-primary/50">{b.phone} · {b.email}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {b.totalPrice && (
+                            <span className="text-sm font-bold text-primary">NT$ {fmt(b.totalPrice)}</span>
+                          )}
+                          <span className="text-xs text-primary/30">{expanded ? '▲' : '▼'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Expanded Detail */}
+                    {expanded && (
+                      <div className="border-t border-sand px-4 md:px-6 py-4 bg-sand/10">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Price Breakdown */}
+                          {pb && (
+                            <div>
+                              <p className="text-xs font-bold tracking-wider mb-2">價格明細</p>
+                              <div className="space-y-1 text-xs">
+                                <div className="flex justify-between">
+                                  <span>房價 NT$ {fmt(pb.basePrice || 0)} × {pb.nightCount}</span>
+                                  <span>NT$ {fmt(pb.baseCost || 0)}</span>
+                                </div>
+                                {(pb.weekendNights || 0) > 0 && (
+                                  <div className="flex justify-between">
+                                    <span>假日加價 NT$ {fmt(pb.weekendSurcharge || 0)} × {pb.weekendNights}</span>
+                                    <span>NT$ {fmt(pb.weekendTotal || 0)}</span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between">
+                                  <span>清潔費</span>
+                                  <span>NT$ {fmt(pb.cleaningFee || 0)}</span>
+                                </div>
+                                <div className="flex justify-between font-bold border-t border-sand pt-1 mt-1">
+                                  <span>合計</span>
+                                  <span>NT$ {fmt(pb.total || b.totalPrice || 0)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Info */}
+                          <div>
+                            <p className="text-xs font-bold tracking-wider mb-2">訂單資訊</p>
+                            <div className="space-y-1 text-xs text-primary/60">
+                              <p>訂單編號：{b.id}</p>
+                              <p>建立時間：{new Date(b.createdAt).toLocaleString('zh-TW')}</p>
+                              {b.note && <p>備註：{b.note}</p>}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-3 mt-4 pt-3 border-t border-sand">
+                          {b.status === 'pending' && (
+                            <>
+                              <button onClick={() => updateStatus(b.id, 'confirmed')}
+                                className="px-4 py-1.5 text-xs bg-green-600 text-white rounded-sm hover:bg-green-700 transition">
+                                確認訂單（已收款）
+                              </button>
+                              <button onClick={() => updateStatus(b.id, 'cancelled')}
+                                className="px-4 py-1.5 text-xs bg-red-50 text-red-600 border border-red-200 rounded-sm hover:bg-red-100 transition">
+                                取消訂單
+                              </button>
+                            </>
+                          )}
+                          {b.status === 'confirmed' && (
+                            <button onClick={() => updateStatus(b.id, 'cancelled')}
+                              className="px-4 py-1.5 text-xs bg-red-50 text-red-600 border border-red-200 rounded-sm hover:bg-red-100 transition">
+                              取消訂單
+                            </button>
+                          )}
+                          {b.status === 'cancelled' && (
+                            <button onClick={() => updateStatus(b.id, 'pending')}
+                              className="px-4 py-1.5 text-xs bg-sand text-primary border border-primary/20 rounded-sm hover:bg-sand/80 transition">
+                              恢復為待確認
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {tab === 'contacts' && (
+          <div className="space-y-4">
+            {contacts.length === 0 && <p className="text-sm text-primary opacity-60">尚無聯繫訊息</p>}
+            {contacts.map(c => (
+              <div key={c.id} className="bg-white p-6 rounded-sm shadow-sm">
+                <p className="font-bold tracking-wider">{c.name} <span className="text-xs text-primary/50 ml-2">{c.email}</span></p>
+                <p className="text-sm mt-2 leading-6 opacity-80">{c.message}</p>
+                <p className="text-xs text-primary/30 mt-3">{new Date(c.createdAt).toLocaleString('zh-TW')}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

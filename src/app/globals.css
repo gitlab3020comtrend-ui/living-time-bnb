@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body { @apply bg-cream text-dark antialiased; font-family: 'Noto Sans TC', 'Noto Sans JP', sans-serif; font-size: 18px; line-height: 1.8; }
+  @media (max-width: 767px) {
+    body { font-size: 20px; }
+  }
+}
+
+@layer components {
+  .section-title { @apply text-3xl md:text-4xl font-bold tracking-[0.2em] text-center mb-4; }
+  .section-subtitle { @apply text-lg md:text-lg text-primary/70 tracking-wider text-center mb-12; }
+  .divider { @apply w-16 h-[1px] bg-accent mx-auto my-6; }
+  .btn-primary { @apply inline-block px-8 py-4 text-lg md:text-base tracking-[0.15em] rounded-md bg-accent text-white hover:bg-accent/90 hover:shadow-md transition-all duration-300; }
+  .btn-outline { @apply inline-block px-8 py-4 text-lg md:text-base tracking-[0.1em] rounded-md border border-primary/30 text-primary hover:border-accent hover:bg-accent hover:text-white transition-all duration-300; }
+  .input-field { @apply w-full px-4 py-4 bg-white border border-sand rounded-md text-lg md:text-base tracking-wider focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all; }
+}
