@@ -1,0 +1,13 @@
+{
+  "method": "git-push-to-vercel",
+  "description": "Push to GitHub, Vercel auto-deploys. 不要用 vercel CLI。",
+  "commands": [
+    "cd /workspace/projects/living-time-bnb",
+    "git add -A",
+    "git -c user.name='gitlab3020comtrend-ui' -c user.email='gitlab.3020.comtrend@gmail.com' commit -m 'deploy update' || echo 'nothing to commit'",
+    "git push origin main"
+  ],
+  "url": "https://living-time-bnb.vercel.app/",
+  "forbidden": ["vercel", "npx vercel", "vercel deploy", "docker", ".deploy"],
+  "notes": "只用 git push！Vercel 會自動偵測 GitHub push 並部署。不需要 vercel CLI、不需要 token、不需要 Docker。"
+}
