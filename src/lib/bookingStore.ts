@@ -156,7 +156,7 @@ export async function markContactRead(id: string): Promise<boolean> {
 
 // ── Admin Auth (stateless, no storage needed) ──
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '0916706660';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const ADMIN_SECRET = process.env.ADMIN_SECRET || 'bnb-admin-secret-' + ADMIN_PASSWORD;
 const TOKEN_MAX_AGE = 24 * 60 * 60 * 1000; // 24h
 
@@ -166,7 +166,7 @@ function hmacSign(data: string): string {
 
 export async function adminLogin(password: string): Promise<string | null> {
   const currentPw = await getEffectivePassword();
-  if (password !== currentPw) return null;
+  if (!currentPw || password !== currentPw) return null;
   const ts = Date.now().toString();
   const sig = hmacSign(ts);
   return `${ts}.${sig}`;

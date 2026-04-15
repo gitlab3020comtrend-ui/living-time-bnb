@@ -11,6 +11,7 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'zh_TW',
     siteName: '生活時光民宿',
+    images: [{ url: 'https://livingtime.tw/images/og-cover.jpg', width: 1200, height: 630, alt: '生活時光民宿 宜蘭冬山' }],
   },
   robots: { index: true, follow: true },
   alternates: { canonical: 'https://livingtime.tw' },

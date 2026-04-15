@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addBooking, hasConflict } from '@/lib/bookingStore';
 import { calculatePrice } from '@/lib/pricing';
+import { notifyNewBooking } from '@/lib/notify';
 
 export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
@@ -38,6 +39,8 @@ export async function POST(req: NextRequest) {
       totalPrice: breakdown.total,
       priceBreakdown: breakdown as unknown as Record<string, unknown>,
     });
+
+    notifyNewBooking(booking, breakdown).catch(() => {});
 
     return NextResponse.json({ success: true, booking });
   } catch (e) {

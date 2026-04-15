@@ -4,7 +4,7 @@ interface Props {
   lineId?: string;
 }
 
-export default function LineFloatingButton({ lineId = '@livingtime' }: Props) {
+export default function LineFloatingButton({ lineId = '0908123181' }: Props) {
   const lineUrl = `https://line.me/R/ti/p/${encodeURIComponent(lineId)}`;
 
   return (

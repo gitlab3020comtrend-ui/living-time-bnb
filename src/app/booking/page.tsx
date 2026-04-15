@@ -1,5 +1,6 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import FadeIn from '@/components/FadeIn';
@@ -48,11 +49,22 @@ function calcPrice(roomId: string, checkIn: string, checkOut: string) {
 
 export default function BookingPage() {
   const { locale, setLocale, t } = useLocale();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [mode, setMode] = useState<'room' | 'whole-house'>('room');
   const [roomId, setRoomId] = useState('');
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
+
+  useEffect(() => {
+    const roomParam = searchParams.get('room');
+    if (roomParam === 'whole-house') {
+      setMode('whole-house');
+    } else if (roomParam && rooms.some(r => r.id === roomParam)) {
+      setMode('room');
+      setRoomId(roomParam);
+    }
+  }, [searchParams]);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');

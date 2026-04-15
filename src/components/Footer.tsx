@@ -54,7 +54,7 @@ export default function Footer({ t }: Props) {
               </svg>
             </a>
             {/* LINE */}
-            <a href="https://line.me/R/ti/p/@livingtime" target="_blank" rel="noopener noreferrer"
+            <a href="https://line.me/R/ti/p/0908123181" target="_blank" rel="noopener noreferrer"
               className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center hover:border-[#06C755] hover:text-[#06C755] transition-all"
               aria-label="LINE">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
